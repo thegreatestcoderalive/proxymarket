@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { createLicense } from "@/lib/license";
 import type Stripe from "stripe";
 
-export const config = { api: { bodyParser: false } };
 
 export async function POST(req: NextRequest) {
   const payload = await req.text();

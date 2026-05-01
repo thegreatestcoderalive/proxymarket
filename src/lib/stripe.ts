@@ -6,7 +6,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-10-28.acacia",
+  apiVersion: "2025-02-24.acacia",
   typescript: true,
 });
 
@@ -39,17 +39,23 @@ export async function createCheckoutSession({
     mode: isRecurring ? "subscription" : "payment",
     line_items: [
       {
-        price_data: isRecurring
-          ? undefined
+        ...(stripePriceId
+          ? { price: stripePriceId }
           : {
-              currency: "usd",
-              unit_amount: price,
-              product_data: {
-                name: productName,
-                description: `ProxyMarket — ${productName}`,
+              price_data: {
+                currency: "usd",
+                unit_amount: price,
+                product_data: {
+                  name: productName,
+                  description: `ProxyMarket — ${productName}`,
+                },
+                ...(isRecurring && {
+                  recurring: {
+                    interval: billingPeriod === "YEARLY" ? "year" : "month",
+                  },
+                }),
               },
-            },
-        price: isRecurring ? stripePriceId ?? undefined : undefined,
+            }),
         quantity: 1,
       },
     ],
