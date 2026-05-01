@@ -1,6 +1,6 @@
 "use client";
 // src/app/checkout/page.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -23,7 +23,7 @@ interface Product {
   isFeatured: boolean;
 }
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const slug = searchParams.get("product");
@@ -256,5 +256,13 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-void flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-ember border-t-transparent animate-spin" /></div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }
