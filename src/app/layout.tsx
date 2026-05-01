@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from "next";
 import { Syne, Figtree, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const syne = Syne({
@@ -92,6 +93,7 @@ export default function RootLayout({
             },
           }}
         />
+        <Analytics />
       </body>
     </html>
   );
