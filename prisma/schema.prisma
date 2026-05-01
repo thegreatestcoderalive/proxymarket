@@ -1,0 +1,183 @@
+// proxymarket/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum LicenseStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  SUSPENDED
+}
+
+enum ProxyType {
+  ULTRAVIOLET
+  RAMMERHEAD
+  DYNAMIC
+  BARE_SERVER
+  METEOR
+  WISP
+}
+
+enum BillingPeriod {
+  LIFETIME
+  MONTHLY
+  YEARLY
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String
+  role          Role      @default(USER)
+  emailVerified DateTime?
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders        Order[]
+  licenses      License[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("sessions")
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  name          String
+  description   String
+  longDescription String?
+  proxyType     ProxyType
+  billingPeriod BillingPeriod
+  price         Int           // In cents (USD)
+  stripePriceId String?       // Stripe Price ID for recurring
+  features      String[]      // Array of feature strings
+  bandwidth     String?       // e.g. "Unlimited", "100GB"
+  connections   Int?          // Max simultaneous connections
+  speed         String?       // e.g. "10Gbps"
+  regions       String[]      // ["US", "EU", "ASIA"]
+  isActive      Boolean       @default(true)
+  isFeatured    Boolean       @default(false)
+  sortOrder     Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  orders   Order[]
+  licenses License[]
+
+  @@index([slug])
+  @@index([proxyType])
+  @@map("products")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  productId       String
+  status          OrderStatus @default(PENDING)
+  amountTotal     Int         // In cents
+  currency        String      @default("usd")
+  stripeSessionId String?     @unique
+  stripePaymentId String?
+  metadata        Json?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  license License?
+
+  @@index([userId])
+  @@index([stripeSessionId])
+  @@map("orders")
+}
+
+model License {
+  id          String        @id @default(cuid())
+  key         String        @unique  // e.g. "PXMKT-XXXX-XXXX-XXXX-XXXX"
+  userId      String
+  productId   String
+  orderId     String        @unique
+  status      LicenseStatus @default(ACTIVE)
+  activations Int           @default(0)
+  maxActivations Int        @default(1)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  hwid        String?       // Hardware ID binding (optional)
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+
+  activationLogs ActivationLog[]
+
+  @@index([key])
+  @@index([userId])
+  @@map("licenses")
+}
+
+model ActivationLog {
+  id        String   @id @default(cuid())
+  licenseId String
+  ip        String?
+  hwid      String?
+  userAgent String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  license License @relation(fields: [licenseId], references: [id])
+
+  @@map("activation_logs")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@map("password_reset_tokens")
+}
